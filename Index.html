@@ -1,0 +1,100 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNZA Thesis and Dissertation Compliance Checker</title>
+  <!--  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script> -->
+<!--<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script> -->
+<link rel="stylesheet" href="style.css"
+</head>
+<body>
+    <div id="output"></div>
+
+    <header>
+        <img src ="C:\Users\Muwele\Desktop\ETD PROJECT\static\logo.png" alt="UNZA Logo" style="display: block; margin: 20px auto; width: 130px; height: auto;">
+    </header> <nav>
+        <h2>The University of Zambia Thesis and Dissertation Compliance Checker</h2>
+        <ul>
+            <li><a href="ETD interface.html">Home</a></li>
+            <li><a href="ABOUT.html">About</a></li>
+            <li><a href="https://graduate.unza.zm/images/files/PG_Regulations_Guidelines_rev.pdf#">Guidelines</a></li>
+            <li><a href="#">Report</a></li>
+            <li><a href="mailto:drgs@unza.zm">Contact</a></li>
+        </ul>
+    </nav>
+    <div class="container">
+        <h1>Upload Your Manuscript</h1>
+        <div id="uploadSection" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
+            <label id="uploadLabel" class="tooltip" for="fileInput">
+                Click to Upload or Drag and Drop
+                <span class="tooltiptext">Supported formats: .pdf, .docx</span>
+            </label>
+            <input type="file" id="fileInput" onchange="uploadFile(event);" />
+            <div id="dropZone">Drag your file here</div>
+        </div>
+        <div id="progressBarContainer">
+            <div id="progressBar">0%</div>
+        </div>
+        <button onclick="sendData()">Check Format</button>
+        <button onclick="displayDocument()">Display Document</button>
+        <div class="report" id="report"></div>
+    </div>
+    <footer>
+        <p>&copy; 2024 University of Zambia. All rights reserved.</p>
+    </footer>
+
+    <!-- The Modal -->
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <p id="modalMessage"></p>
+        </div>
+    </div>
+<script>
+// JAVASCRIPT FOR FILE UPLOADING
+function uploadFile(event) {
+    const file = event.target.files[0]; // Get the first selected file
+
+    if (file) {
+        const formData = new FormData();
+        formData.append('file', file); // Append the file to the FormData object
+
+        fetch('http://localhost:3000/api/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log(data.message); // Display backend response
+            document.getElementById('output').innerText = data.message;
+        })
+        .catch(error => console.error('Error:', error));
+    } else {
+        console.error('No file selected.');
+    }
+}
+
+
+   //JavaScript to interact with Flask API 
+   //Function to make a POST request to the Flask backend
+   function sendData() {
+       // Get the value from the input field
+       const name = document.getElementById('nameInput').value; 
+   
+       fetch('http://localhost:3000/api/data', {
+           method: 'POST',
+           headers: {
+               'Content-Type': 'application/json'
+           },
+           body: JSON.stringify({ name: name })  // Send dynamic data
+       })
+       .then(response => response.json())
+       .then(data => {
+           document.getElementById('output').innerText = data.message;
+       })
+       .catch(error => console.error('Error:', error));
+   }
+   </script>
