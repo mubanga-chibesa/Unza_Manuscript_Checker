@@ -6,95 +6,159 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UNZA Thesis and Dissertation Compliance Checker</title>
-  <!--  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script> -->
-<!--<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script> -->
-<link rel="stylesheet" href="style.css"
+    <link rel="stylesheet" href="{{url_for('static', filename='stylesheet.css')}}" />
+    <style>
+        #uploadSection.upload-success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+
+        #uploadSection.upload-failed {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+    </style>
 </head>
 <body>
     <div id="output"></div>
 
     <header>
-        <img src ="logo.jpg" alt="UNZA Logo" style="display: block; margin: 20px auto; width: 130px; height: auto;">
-    </header> <nav>
+        <img src="unzalogo.png" alt="UNZA Logo" style="display: block; margin: 20px auto; width: 130px; height: auto;">
+    </header>
+    <nav>
         <h2>The University of Zambia Thesis and Dissertation Compliance Checker</h2>
         <ul>
-            <li><a href="ETD interface.html">Home</a></li>
-            <li><a href="ABOUT.html">About</a></li>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="about_page">About</a></li>
             <li><a href="https://graduate.unza.zm/images/files/PG_Regulations_Guidelines_rev.pdf#">Guidelines</a></li>
             <li><a href="#">Report</a></li>
             <li><a href="mailto:drgs@unza.zm">Contact</a></li>
         </ul>
     </nav>
+
     <div class="container">
         <h1>Upload Your Manuscript</h1>
-        <div id="uploadSection" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
+        <div id="uploadSection" ondrop="handleDrop(event);" ondragover="handleDragOver(event);" style="border: 2px dashed #004d00; padding: 20px; text-align: center;">
             <label id="uploadLabel" class="tooltip" for="fileInput">
                 Click to Upload or Drag and Drop
                 <span class="tooltiptext">Supported formats: .pdf, .docx</span>
             </label>
-            <input type="file" id="fileInput" onchange="uploadFile(event);" />
+            <input type="file" id="fileInput" onchange="uploadFile(event);" style="display: none;" />
             <div id="dropZone">Drag your file here</div>
-        </div>
-        <div id="progressBarContainer">
-            <div id="progressBar">0%</div>
-        </div>
-        <button onclick="sendData()">Check Format</button>
-        <button onclick="displayDocument()">Display Document</button>
+       
+        <button id="checkButton" onclick="checkFormat()">Check Format</button>
+        <button id="reportButton" style="display: none;" onclick="fetchReport()">Display Report</button>
         <div class="report" id="report"></div>
     </div>
+
     <footer>
         <p>&copy; 2024 University of Zambia. All rights reserved.</p>
     </footer>
 
-    <!-- The Modal -->
-    <div id="myModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <p id="modalMessage"></p>
-        </div>
-    </div>
-<script>
-// JAVASCRIPT FOR FILE UPLOADING
-function uploadFile(event) {
-    const file = event.target.files[0]; // Get the first selected file
+    <!-- JavaScript for handling file upload and interactions -->
+    <script>
+        let reportFilename = '';
+        let resultsData = null; // Store the analysis results
 
-    if (file) {
-        const formData = new FormData();
-        formData.append('file', file); // Append the file to the FormData object
+        // Handle drag and drop functionality
+        function handleDragOver(event) {
+            event.preventDefault();
+            document.getElementById('dropZone').innerText = "Release to upload";
+        }
 
-        fetch('http://localhost:3000/api/upload', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log(data.message); // Display backend response
-            document.getElementById('output').innerText = data.message;
-        })
-        .catch(error => console.error('Error:', error));
-    } else {
-        console.error('No file selected.');
-    }
-}
+        function handleDrop(event) {
+            event.preventDefault();
+            const file = event.dataTransfer.files[0]; // Get the dropped file
+            document.getElementById('dropZone').innerText = "Uploading...";
+            uploadFile(file);
+        }
 
+        // Upload the file to the Flask API
+        function uploadFile(eventOrFile) {
+            const file = eventOrFile.target ? eventOrFile.target.files[0] : eventOrFile;
 
-   //JavaScript to interact with Flask API 
-   //Function to make a POST request to the Flask backend
-   function sendData() {
-       // Get the value from the input field
-       const name = document.getElementById('nameInput').value; 
-   
-       fetch('http://localhost:3000/api/data', {
-           method: 'POST',
-           headers: {
-               'Content-Type': 'application/json'
-           },
-           body: JSON.stringify({ name: name })  // Send dynamic data
-       })
-       .then(response => response.json())
-       .then(data => {
-           document.getElementById('output').innerText = data.message;
-       })
-       .catch(error => console.error('Error:', error));
-   }
+            if (file) {
+                const formData = new FormData();
+                formData.append('file', file); // Append the file to FormData
+
+                // Send the file to the Flask API for analysis
+                fetch('http://127.0.0.1:5000/api/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('output').innerText = data.message;
+
+                    if (data.results) {
+                        resultsData = data.results;  // Store the results
+                        displayResults(resultsData); // Call the function to display the results
+                    }
+
+                    if (data.report) {
+                        reportFilename = data.report;
+                        document.getElementById('reportButton').style.display = 'block'; // Show the report button
+                        updateUploadSuccess();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error uploading file:', error);
+                    document.getElementById('output').innerText = 'Error uploading file.';
+                    updateUploadFailed();
+                });
+            } else {
+                document.getElementById('output').innerText = 'No file selected.';
+            }
+        }
+
+        // Update the upload section on success
+        function updateUploadSuccess() {
+            const uploadSection = document.getElementById('uploadSection');
+            uploadSection.classList.remove('upload-failed');
+            uploadSection.classList.add('upload-success');
+            document.getElementById('dropZone').innerText = "File uploaded successfully!";
+        }
+
+        // Update the upload section on failure
+        function updateUploadFailed() {
+            const uploadSection = document.getElementById('uploadSection');
+            uploadSection.classList.remove('upload-success');
+            uploadSection.classList.add('upload-failed');
+            document.getElementById('dropZone').innerText = "Failed to upload file.";
+        }
+
+        // Fetch and display the report generated by the backend
+        function fetchReport() {
+            if (reportFilename) {
+                fetch(`http://127.0.0.1:5000/api/report/${reportFilename}`)
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('report').innerText = data; // Display the report
+                })
+                .catch(error => {
+                    console.error('Error fetching report:', error);
+                    document.getElementById('output').innerText = 'Error fetching report.';
+                });
+            } else {
+                document.getElementById('output').innerText = 'No report available.';
+            }
+        }
+
+        // Function to display the analysis results
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('report');
+            resultsDiv.innerHTML = "<h3>Analysis Results:</h3>";
+
+            results.forEach(result => {
+                resultsDiv.innerHTML += `<p>${JSON.stringify(result)}</p>`;
+            });
+        }
+
+        // Trigger the analysis
+        function checkFormat() {
+            console.log("Check Format button clicked");
+        }
+
    </script>
