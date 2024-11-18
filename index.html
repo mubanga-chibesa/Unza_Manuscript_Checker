@@ -1,55 +1,40 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UNZA Thesis and Dissertation Compliance Checker</title>
-     <link rel="stylesheet" href="style.css"> 
-    <style>
-        #uploadSection.upload-success {
-            background-color: #d4edda;
-            border-color: #c3e6cb;
-            color: #155724;
-        }
-
-        #uploadSection.upload-failed {
-            background-color: #f8d7da;
-            border-color: #f5c6cb;
-            color: #721c24;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="output"></div>
 
     <header>
-        <img src="unzalogo.png" alt="UNZA Logo" style="display: block; margin: 20px auto; width: 130px; height: auto;">
+        <img src="logo.png" alt="UNZA Logo" style="display: block; margin: 20px auto; width: 130px; height: auto;">
     </header>
     <nav>
         <h2>The University of Zambia Thesis and Dissertation Compliance Checker</h2>
         <ul>
-            <li><a href="index.html">Home</a></li>
-            <li><a href="about_page">About</a></li>
+            <li><a href="ETD interface.html">Home</a></li>
+            <li><a href="ABOUT.html" class="active">About</a></li>
             <li><a href="https://graduate.unza.zm/images/files/PG_Regulations_Guidelines_rev.pdf#">Guidelines</a></li>
-            <li><a href="#">Report</a></li>
             <li><a href="mailto:drgs@unza.zm">Contact</a></li>
         </ul>
     </nav>
-
     <div class="container">
         <h1>Upload Your Manuscript</h1>
-        <div id="uploadSection" ondrop="handleDrop(event);" ondragover="handleDragOver(event);" style="border: 2px dashed #004d00; padding: 20px; text-align: center;">
+        <div id="uploadSection">
             <label id="uploadLabel" class="tooltip" for="fileInput">
                 Click to Upload or Drag and Drop
                 <span class="tooltiptext">Supported formats: .pdf, .docx</span>
             </label>
-            <input type="file" id="fileInput" onchange="uploadFile(event);" style="display: none;" />
-            <div id="dropZone">Drag your file here</div>
-       
-        <button id="checkButton" onclick="checkFormat()">Check Format</button>
-        <button id="reportButton" style="display: none;" onclick="fetchReport()">Display Report</button>
+            <input type="file" id="fileInput" onchange="uploadFile(event);" />
+        </div>
+        <div id="progressBarContainer">
+            <div id="progressBar">0%</div>
+        </div>
+        <button onclick="sendData()">Check Format</button>
+        <button onclick="displayDocument()">Display Analysis Results</button>
         <div class="report" id="report"></div>
     </div>
 
@@ -57,108 +42,114 @@
         <p>&copy; 2024 University of Zambia. All rights reserved.</p>
     </footer>
 
-    <!-- JavaScript for handling file upload and interactions -->
     <script>
-        let reportFilename = '';
-        let resultsData = null; // Store the analysis results
+        let uploadedFile = null;
 
-        // Handle drag and drop functionality
-        function handleDragOver(event) {
-            event.preventDefault();
-            document.getElementById('dropZone').innerText = "Release to upload";
-        }
+        // Store the selected file
+        function uploadFile(event) {
+            uploadedFile = event.target.files[0]; // Get the selected file
 
-        function handleDrop(event) {
-            event.preventDefault();
-            const file = event.dataTransfer.files[0]; // Get the dropped file
-            document.getElementById('dropZone').innerText = "Uploading...";
-            uploadFile(file);
-        }
-
-        // Upload the file to the Flask API
-        function uploadFile(eventOrFile) {
-            const file = eventOrFile.target ? eventOrFile.target.files[0] : eventOrFile;
-
-            if (file) {
-                const formData = new FormData();
-                formData.append('file', file); // Append the file to FormData
-
-                // Send the file to the Flask API for analysis
-                fetch('http://127.0.0.1:5000/api/upload', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('output').innerText = data.message;
-
-                    if (data.results) {
-                        resultsData = data.results;  // Store the results
-                        displayResults(resultsData); // Call the function to display the results
-                    }
-
-                    if (data.report) {
-                        reportFilename = data.report;
-                        document.getElementById('reportButton').style.display = 'block'; // Show the report button
-                        updateUploadSuccess();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error uploading file:', error);
-                    document.getElementById('output').innerText = 'Error uploading file.';
-                    updateUploadFailed();
-                });
+            if (uploadedFile) {
+                document.getElementById('output').innerText = "File selected: " + uploadedFile.name;
             } else {
-                document.getElementById('output').innerText = 'No file selected.';
+                console.error('No file selected.');
             }
         }
 
-        // Update the upload section on success
-        function updateUploadSuccess() {
-            const uploadSection = document.getElementById('uploadSection');
-            uploadSection.classList.remove('upload-failed');
-            uploadSection.classList.add('upload-success');
-            document.getElementById('dropZone').innerText = "File uploaded successfully!";
-        }
-
-        // Update the upload section on failure
-        function updateUploadFailed() {
-            const uploadSection = document.getElementById('uploadSection');
-            uploadSection.classList.remove('upload-success');
-            uploadSection.classList.add('upload-failed');
-            document.getElementById('dropZone').innerText = "Failed to upload file.";
-        }
-
-        // Fetch and display the report generated by the backend
-        function fetchReport() {
-            if (reportFilename) {
-                fetch(`http://127.0.0.1:5000/api/report/${reportFilename}`)
-                .then(response => response.text())
-                .then(data => {
-                    document.getElementById('report').innerText = data; // Display the report
-                })
-                .catch(error => {
-                    console.error('Error fetching report:', error);
-                    document.getElementById('output').innerText = 'Error fetching report.';
-                });
-            } else {
-                document.getElementById('output').innerText = 'No report available.';
+        // Function to handle the "Check Format" button click
+        function sendData() {
+            if (!uploadedFile) {
+                document.getElementById('output').innerText = "Please upload a file first.";
+                return;
             }
-        }
 
-        // Function to display the analysis results
-        function displayResults(results) {
-            const resultsDiv = document.getElementById('report');
-            resultsDiv.innerHTML = "<h3>Analysis Results:</h3>";
+            const formData = new FormData();
+            formData.append('file', uploadedFile);
 
-            results.forEach(result => {
-                resultsDiv.innerHTML += `<p>${JSON.stringify(result)}</p>`;
+            const xhr = new XMLHttpRequest();
+
+            // Monitor the file upload progress
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    document.getElementById('progressBar').style.width = percentComplete + '%';
+                    document.getElementById('progressBar').innerText = Math.floor(percentComplete) + '%';
+                }
             });
+
+            // Handle the response
+            xhr.addEventListener('load', function() {
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    document.getElementById('output').innerText = response.message;
+
+                    // Save analysis results to localStorage
+                    localStorage.setItem('analysisResults', JSON.stringify(response.results));
+
+                    // Set progress bar to 100%
+                    document.getElementById('progressBar').style.width = '100%';
+                    document.getElementById('progressBar').innerText = '100%';
+                } else {
+                    console.error('Upload failed:', xhr.statusText);
+                    document.getElementById('output').innerText = 'Error occurred while analyzing the file.';
+                }
+            });
+
+            // Handle errors
+            xhr.addEventListener('error', function() {
+                console.error('Upload error');
+                document.getElementById('output').innerText = 'Error uploading the file.';
+            });
+
+            // Open the connection and send the form data
+            xhr.open('POST', 'http://localhost:5000/api/upload', true);
+            xhr.send(formData);
         }
 
-        // Trigger the analysis
-        function checkFormat() {
-            console.log("Check Format button clicked");
+        // Function to display the analysis report in a readable format
+        function displayDocument() {
+            const results = JSON.parse(localStorage.getItem('analysisResults'));
+            const reportDiv = document.getElementById('report');
+            reportDiv.innerHTML = ''; // Clear previous report
+
+            if (results) {
+                reportDiv.innerHTML = '<h3>Analysis Report:</h3>';
+                
+                // Display each result in a formatted manner
+                results.forEach((result, index) => {
+                    const resultItem = document.createElement('div');
+                    resultItem.classList.add('result-item'); // Add styling class if needed
+
+                    // Format each key and value in the result
+                    formatResult(result, resultItem);
+                    reportDiv.appendChild(resultItem);
+                });
+            } else {
+                reportDiv.innerText = 'No analysis available. Please upload and check a file first.';
+            }
         }
 
-   </script>
+        // Recursively format and display results
+        function formatResult(result, parentElement) {
+            if (typeof result === 'object' && result !== null) {
+                Object.entries(result).forEach(([key, value]) => {
+                    if (typeof value === 'object') {
+                        const nestedDiv = document.createElement('div');
+                        nestedDiv.innerHTML = `<strong>${key}:</strong>`;
+                        parentElement.appendChild(nestedDiv);
+                        formatResult(value, nestedDiv); // Recursion for nested objects
+                    } else {
+                        const p = document.createElement('p');
+                        p.innerHTML = `<strong>${key}:</strong> ${value}`;
+                        parentElement.appendChild(p);
+                    }
+                });
+            } else {
+                const p = document.createElement('p');
+                p.innerHTML = `${result}`;
+                parentElement.appendChild(p);
+            }
+        }
+    </script>
+</body>
+</html>
