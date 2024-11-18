@@ -263,7 +263,7 @@ def get_report(filename):
         return jsonify({"message": f"Error fetching report: {str(e)}"}), 500
 
 if __name__ == '__main__':
-   app.run(debug=True)
+   app.run(host='0.0.0.0', port 5000, debug=false)
 
 
 
