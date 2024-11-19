@@ -1,54 +1,51 @@
 import os
 from flask import Flask, request, jsonify
+from flask_cors import CORS
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+CORS(app)
 
-# Ensure a directory exists to temporarily store uploaded files
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = '/tmp/uploads'  # Use /tmp for serverless compatibility
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# File upload and analysis route
+ALLOWED_EXTENSIONS = {'pdf', 'docx'}
+
+# Helper function to check allowed file types
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Route for file upload and analysis
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
-    if 'file' not in request.files:
-        return jsonify({"message": "No file part in the request"}), 400
-
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"message": "No file selected"}), 400
-
-    # Save the file temporarily for analysis
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-    file.save(file_path)
-
-    # Perform analysis (you can customize this with your logic)
-    analysis_results = perform_analysis(file_path)
-
-    # Clean up the file after analysis
-    os.remove(file_path)
-
-    return jsonify({
-        "message": "File processed successfully",
-        "results": analysis_results
-    })
-
-# Function to analyze the file
-def perform_analysis(file_path):
-    # Placeholder for real analysis logic
-    # Example: Counting the number of lines in the file
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
+        if 'file' not in request.files:
+            return jsonify({"message": "No file part in the request"}), 400
 
-        return {
-            "filename": os.path.basename(file_path),
-            "line_count": len(lines),
-            "message": "Analysis completed successfully"
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"message": "No file selected"}), 400
+
+        if not allowed_file(file.filename):
+            return jsonify({"message": "File type not allowed"}), 400
+
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+
+        # Mock analysis for simplicity
+        analysis_result = {
+            "filename": filename,
+            "status": "success",
+            "message": "File analyzed successfully",
+            "analysis": {"line_count": 100, "word_count": 500}  # Replace with actual analysis
         }
-    except Exception as e:
-        return {"error": str(e), "message": "Failed to analyze the file"}
 
-# Run the app (For local development; ignored in production with Vercel)
-if __name__ == '__main__':
+        return jsonify({"message": "File processed successfully", "results": analysis_result}), 200
+
+    except Exception as e:
+        return jsonify({"message": f"Failed to process file: {str(e)}"}), 500
+
+if __name__ == "__main__":
     app.run(debug=True)
