@@ -41,74 +41,40 @@
     <footer>
         <p>&copy; 2024 University of Zambia. All rights reserved.</p>
     </footer>
+<script>
+   function sendData() {
+    if (!uploadedFile) {
+        document.getElementById('output').innerText = "Please upload a file first.";
+        return;
+    }
 
-    <script>
-        let uploadedFile = null;
+    const formData = new FormData();
+    formData.append('file', uploadedFile);
 
-        // Store the selected file
-        function uploadFile(event) {
-            uploadedFile = event.target.files[0];
+    fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                document.getElementById('output').innerText = data.message;
 
-            if (uploadedFile) {
-                document.getElementById('output').innerText = "File selected: " + uploadedFile.name;
-            } else {
-                console.error('No file selected.');
-            }
-        }
-
-        // Send the uploaded file to the backend for processing
-        function sendData() {
-            if (!uploadedFile) {
-                document.getElementById('output').innerText = "Please upload a file first.";
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('file', uploadedFile);
-
-            fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.message) {
-                        document.getElementById('output').innerText = data.message;
-
-                        // Save analysis results to localStorage
-                        if (data.results) {
-                            localStorage.setItem('analysisResults', JSON.stringify(data.results));
-                        }
-
-                        // Update progress bar
-                        document.getElementById('progressBar').style.width = '100%';
-                        document.getElementById('progressBar').innerText = '100%';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    document.getElementById('output').innerText = 'Error occurred while analyzing the file.';
-                });
-        }
-
-        // Display analysis results
-        function displayDocument() {
-            const results = JSON.parse(localStorage.getItem('analysisResults'));
-            const reportDiv = document.getElementById('report');
-            reportDiv.innerHTML = ''; // Clear previous report
-
-            if (results) {
-                reportDiv.innerHTML = '<h3>Analysis Report:</h3>';
-
-                for (const [key, value] of Object.entries(results.analysis)) {
-                    const p = document.createElement('p');
-                    p.innerHTML = `<strong>${key}:</strong> ${value}`;
-                    reportDiv.appendChild(p);
+                // Save analysis results to localStorage
+                if (data.results) {
+                    localStorage.setItem('analysisResults', JSON.stringify(data.results));
                 }
-            } else {
-                reportDiv.innerText = 'No analysis available. Please upload and check a file first.';
+
+                // Update progress bar to 100%
+                document.getElementById('progressBar').style.width = '100%';
+                document.getElementById('progressBar').innerText = '100%';
             }
-        }
-    </script>
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('output').innerText = 'Error occurred while analyzing the file.';
+        });
+}
+</script>
 </body>
 </html>
