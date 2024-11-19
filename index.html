@@ -47,7 +47,7 @@
 
         // Store the selected file
         function uploadFile(event) {
-            uploadedFile = event.target.files[0]; // Get the selected file
+            uploadedFile = event.target.files[0];
 
             if (uploadedFile) {
                 document.getElementById('output').innerText = "File selected: " + uploadedFile.name;
@@ -56,7 +56,7 @@
             }
         }
 
-        // Function to handle the "Check Format" button click
+        // Send the uploaded file to the backend for processing
         function sendData() {
             if (!uploadedFile) {
                 document.getElementById('output').innerText = "Please upload a file first.";
@@ -66,47 +66,32 @@
             const formData = new FormData();
             formData.append('file', uploadedFile);
 
-            const xhr = new XMLHttpRequest();
+            fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        document.getElementById('output').innerText = data.message;
 
-            // Monitor the file upload progress
-            xhr.upload.addEventListener('progress', function(e) {
-                if (e.lengthComputable) {
-                    const percentComplete = (e.loaded / e.total) * 100;
-                    document.getElementById('progressBar').style.width = percentComplete + '%';
-                    document.getElementById('progressBar').innerText = Math.floor(percentComplete) + '%';
-                }
-            });
+                        // Save analysis results to localStorage
+                        if (data.results) {
+                            localStorage.setItem('analysisResults', JSON.stringify(data.results));
+                        }
 
-            // Handle the response
-            xhr.addEventListener('load', function() {
-                if (xhr.status === 200) {
-                    const response = JSON.parse(xhr.responseText);
-                    document.getElementById('output').innerText = response.message;
-
-                    // Save analysis results to localStorage
-                    localStorage.setItem('analysisResults', JSON.stringify(response.results));
-
-                    // Set progress bar to 100%
-                    document.getElementById('progressBar').style.width = '100%';
-                    document.getElementById('progressBar').innerText = '100%';
-                } else {
-                    console.error('Upload failed:', xhr.statusText);
+                        // Update progress bar
+                        document.getElementById('progressBar').style.width = '100%';
+                        document.getElementById('progressBar').innerText = '100%';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
                     document.getElementById('output').innerText = 'Error occurred while analyzing the file.';
-                }
-            });
-
-            // Handle errors
-            xhr.addEventListener('error', function() {
-                console.error('Upload error');
-                document.getElementById('output').innerText = 'Error uploading the file.';
-            });
-
-            // Open the connection and send the form data
-           xhr.open('POST', '/api/upload', true);
-            xhr.send(formData);
+                });
         }
 
-        // Function to display the analysis report in a readable format
+        // Display analysis results
         function displayDocument() {
             const results = JSON.parse(localStorage.getItem('analysisResults'));
             const reportDiv = document.getElementById('report');
@@ -114,40 +99,14 @@
 
             if (results) {
                 reportDiv.innerHTML = '<h3>Analysis Report:</h3>';
-                
-                // Display each result in a formatted manner
-                results.forEach((result, index) => {
-                    const resultItem = document.createElement('div');
-                    resultItem.classList.add('result-item'); // Add styling class if needed
 
-                    // Format each key and value in the result
-                    formatResult(result, resultItem);
-                    reportDiv.appendChild(resultItem);
-                });
+                for (const [key, value] of Object.entries(results.analysis)) {
+                    const p = document.createElement('p');
+                    p.innerHTML = `<strong>${key}:</strong> ${value}`;
+                    reportDiv.appendChild(p);
+                }
             } else {
                 reportDiv.innerText = 'No analysis available. Please upload and check a file first.';
-            }
-        }
-
-        // Recursively format and display results
-        function formatResult(result, parentElement) {
-            if (typeof result === 'object' && result !== null) {
-                Object.entries(result).forEach(([key, value]) => {
-                    if (typeof value === 'object') {
-                        const nestedDiv = document.createElement('div');
-                        nestedDiv.innerHTML = <strong>${key}:</strong>;
-                        parentElement.appendChild(nestedDiv);
-                        formatResult(value, nestedDiv); // Recursion for nested objects
-                    } else {
-                        const p = document.createElement('p');
-                        p.innerHTML = <strong>${key}:</strong> ${value};
-                        parentElement.appendChild(p);
-                    }
-                });
-            } else {
-                const p = document.createElement('p');
-                p.innerHTML = ${result};
-                parentElement.appendChild(p);
             }
         }
     </script>
